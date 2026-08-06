@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("greeting").textContent = `${greet()} ☀️`;
   const ed = $("entry-date");
   if (ed) ed.value = todayStr();
-  loadHome();
+  initAuth();
 });
 
 
@@ -172,7 +172,81 @@ Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 Chart.defaults.color = "#6a8a94";
 Chart.defaults.borderColor = "rgba(47,164,160,.08)";
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
-Chart.defaults.plugins.legend.labels.pointStyle = "circle";`n// ====== 首页 ======
+Chart.defaults.plugins.legend.labels.pointStyle = "circle";`n
+// ====== 登录保护（云端模式） ======
+let loginMode = "login";
+let authReady = false;
+
+async function initAuth() {
+  if (!CLOUD_MODE || !sb) {
+    authReady = true;
+    hideLogin();
+    const lo = $("logout-btn"); if (lo) lo.style.display = "none";
+    loadHome();
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { authReady = true; hideLogin(); showLogout(); loadHome(); }
+  else { showLogin(); }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) { authReady = true; hideLogin(); showLogout(); loadHome(); }
+    else { showLogin(); hideLogout(); }
+  });
+}
+
+function showLogin() {
+  const ov = $("login-overlay"); if (ov) ov.classList.add("visible");
+}
+function hideLogin() {
+  const ov = $("login-overlay"); if (ov) ov.classList.remove("visible");
+}
+function showLogout() {
+  const lo = $("logout-btn"); if (lo) lo.style.display = "inline-block";
+}
+function hideLogout() {
+  const lo = $("logout-btn"); if (lo) lo.style.display = "none";
+}
+
+document.addEventListener("click", async (e) => {
+  if (e.target.id === "login-btn") await handleAuth();
+  if (e.target.id === "login-toggle") {
+    loginMode = loginMode === "login" ? "signup" : "login";
+    $("login-toggle").textContent = loginMode === "login" ? "没有账号？创建账号" : "已有账号？直接登录";
+    $("login-btn").textContent = loginMode === "login" ? "登录" : "创建账号";
+    $("login-sub").textContent = loginMode === "login" ? "登录后查看你的状态数据" : "创建账号后自动登录";
+    $("login-error").textContent = "";
+  }
+  if (e.target.id === "logout-btn" && sb) {
+    await sb.auth.signOut();
+    toast("已退出登录");
+  }
+});
+
+async function handleAuth() {
+  const email = $("login-email").value.trim();
+  const password = $("login-password").value;
+  const errEl = $("login-error");
+  errEl.textContent = "";
+  if (!email || !password) { errEl.textContent = "请输入邮箱和密码"; return; }
+  const btn = $("login-btn");
+  btn.disabled = true;
+  try {
+    if (loginMode === "signup") {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      if (data && data.session) { toast("注册成功，已登录"); }
+      else errEl.textContent = "注册成功，请检查邮箱确认后登录";
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch (e) {
+    errEl.textContent = (e && e.message) || "操作失败，请重试";
+  }
+  btn.disabled = false;
+}
+// ====== 首页 ======
 async function loadHome() {
   const data = await api(`/api/data/${todayStr()}`);
   let recent = [];
