@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#6366f1">
+<meta name="color-scheme" content="light only">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+<title>能量看板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.6/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <header id="app-header">
+    <div class="header-left">
+      <span id="header-date" class="header-date"></span>
+    </div>
+    <div class="header-right">
+      <span class="status-dot" id="status-dot"></span>
+      <span class="status-text" id="status-text">已连接</span>
+    </div>
+  </header>
+
+  <!-- Tab Content -->
+  <main id="main-content">
+
+    <!-- Tab: 首页 -->
+    <section id="tab-home" class="tab-content active">
+      <div class="greeting-row">
+        <span id="greeting"></span>
+      </div>
+      <!-- Score Cards -->
+      <div class="score-cards">
+        <div class="score-card sc-body">
+          <div class="sc-label">身体</div>
+          <div class="sc-value" id="sc-body">--</div>
+          <div class="sc-trend" id="sc-body-trend"></div>
+        </div>
+        <div class="score-card sc-energy">
+          <div class="sc-label">精力</div>
+          <div class="sc-value" id="sc-energy">--</div>
+          <div class="sc-trend" id="sc-energy-trend"></div>
+        </div>
+        <div class="score-card sc-mood">
+          <div class="sc-label">情绪</div>
+          <div class="sc-value" id="sc-mood">--</div>
+          <div class="sc-trend" id="sc-mood-trend"></div>
+        </div>
+      </div>
+      <!-- Energy Curve -->
+      <div class="card">
+        <div class="card-header">今日精力曲线</div>
+        <div class="card-body">
+          <canvas id="energy-curve-today" height="160"></canvas>
+        </div>
+      </div>
+      <!-- Quick Info -->
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">睡眠</span>
+          <span class="info-val" id="qi-sleep">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">专注</span>
+          <span class="info-val" id="qi-focus">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">喝水</span>
+          <span class="info-val" id="qi-water">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">活动</span>
+          <span class="info-val" id="qi-activity">--</span>
+        </div>
+      </div>
+      <!-- Energy Prediction -->
+      <div class="card" id="prediction-card">
+        <div class="card-header">明日预判</div>
+        <div class="card-body">
+          <div class="prediction-row">
+            <div class="prediction-level">
+              <span class="pred-label">身体</span>
+              <div class="pred-bar"><div class="pred-fill" id="pred-body" style="width:0%"></div></div>
+            </div>
+            <div class="prediction-level">
+              <span class="pred-label">精力</span>
+              <div class="pred-bar"><div class="pred-fill" id="pred-energy" style="width:0%"></div></div>
+            </div>
+            <div class="prediction-level">
+              <span class="pred-label">情绪</span>
+              <div class="pred-bar"><div class="pred-fill" id="pred-mood" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 录入 -->
+    <section id="tab-entry" class="tab-content">
+      <div class="card">
+        <div class="card-header">每日记录 <button class="btn-sm" id="entry-today-btn" onclick="fillToday()">填充今日</button></div>
+          <div class="date-picker-row">
+            <label>选择日期</label>
+            <input type="date" id="entry-date">
+          </div>
+        <div class="card-body">
+          <form id="entry-form">
+            <div class="form-section">
+              <h4>😴 睡眠</h4>
+              <div class="form-row">
+                <div class="form-group half"><label>入睡时间</label><input type="time" id="f-睡眠_入睡时间"></div>
+                <div class="form-group half"><label>起床时间</label><input type="time" id="f-睡眠_起床时间"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group third"><label>时长(时)</label><input type="number" id="f-睡眠_时长小时" step="0.1" min="0" max="24"></div>
+                <div class="form-group third"><label>质量</label><input type="range" id="f-睡眠_质量" min="1" max="10"><span class="range-val" id="rv-睡眠_质量">5</span></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group half"><label>午休开始</label><input type="time" id="f-午休_开始"></div>
+                <div class="form-group half"><label>午休结束</label><input type="time" id="f-午休_结束"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group third"><label>午休分钟</label><input type="number" id="f-午休_时长分钟" min="0" max="120"></div>
+                <div class="form-group third"><label>午休质量</label><input type="range" id="f-午休_质量" min="1" max="10"><span class="range-val" id="rv-午休_质量">5</span></div>
+              </div>
+            </div>
+            <div class="form-section">
+              <h4>🧘 身体</h4>
+              <div class="form-row">
+                <div class="form-group third"><label>经期第几天</label><input type="number" id="f-经期_第几天" min="0" max="7" value="0"></div>
+                <div class="form-group third"><label>经期强度</label><input type="range" id="f-经期_强度" min="0" max="5"><span class="range-val" id="rv-经期_强度">0</span></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group half"><label>饮食质量</label><input type="range" id="f-饮食_质量" min="1" max="10"><span class="range-val" id="rv-饮食_质量">5</span></div>
+                <div class="form-group half"><label>喝水杯数</label><input type="number" id="f-喝水_杯数" min="0" max="20" value="6"></div>
+              </div>
+              <div class="form-group"><label>饮食备注</label><input type="text" id="f-饮食_备注" placeholder="吃了什么"></div>
+              <div class="form-group"><label>身体症状</label><input type="text" id="f-身体_症状" placeholder="如：过敏性鼻炎"></div>
+              <div class="form-group"><label>身体评分</label><input type="range" id="f-身体_评分" min="1" max="10"><span class="range-val" id="rv-身体_评分">5</span></div>
+            </div>
+            <div class="form-section">
+              <h4>⚡ 精力</h4>
+              <div class="form-row">
+                <div class="form-group third"><label>早6-9</label><input type="range" id="f-精力_早晨_6_9点" min="1" max="10"><span class="range-val" id="rv-精力_早晨_6_9点">5</span></div>
+                <div class="form-group third"><label>上午9-12</label><input type="range" id="f-精力_上午_9_12点" min="1" max="10"><span class="range-val" id="rv-精力_上午_9_12点">5</span></div>
+                <div class="form-group third"><label>午后12-14</label><input type="range" id="f-精力_午后_12_14点" min="1" max="10"><span class="range-val" id="rv-精力_午后_12_14点">5</span></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group third"><label>下午14-18</label><input type="range" id="f-精力_下午_14_18点" min="1" max="10"><span class="range-val" id="rv-精力_下午_14_18点">5</span></div>
+                <div class="form-group third"><label>傍晚18-21</label><input type="range" id="f-精力_傍晚_18_21点" min="1" max="10"><span class="range-val" id="rv-精力_傍晚_18_21点">5</span></div>
+                <div class="form-group third"><label>夜间21-24</label><input type="range" id="f-精力_夜间_21_24点" min="1" max="10"><span class="range-val" id="rv-精力_夜间_21_24点">5</span></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group third"><label>专注时长(h)</label><input type="number" id="f-专注_总时长" step="0.5" min="0" max="24"></div>
+                <div class="form-group third"><label>最高强度</label><input type="range" id="f-专注_最高强度" min="1" max="10"><span class="range-val" id="rv-专注_最高强度">5</span></div>
+                <div class="form-group third"><label>平均强度</label><input type="range" id="f-专注_平均强度" min="1" max="10"><span class="range-val" id="rv-专注_平均强度">5</span></div>
+              </div>
+            </div>
+            <div class="form-section">
+              <h4>💭 情绪</h4>
+              <div class="form-row">
+                <div class="form-group third"><label>平均</label><input type="range" id="f-情绪_平均值" min="1" max="10"><span class="range-val" id="rv-情绪_平均值">5</span></div>
+                <div class="form-group third"><label>最低</label><input type="range" id="f-情绪_最低" min="1" max="10"><span class="range-val" id="rv-情绪_最低">5</span></div>
+                <div class="form-group third"><label>最高</label><input type="range" id="f-情绪_最高" min="1" max="10"><span class="range-val" id="rv-情绪_最高">5</span></div>
+              </div>
+              <div class="form-group"><label>情绪描述</label><input type="text" id="f-情绪_描述" placeholder="如：平静、烦躁"></div>
+              <div class="form-group"><label>触发事件</label><input type="text" id="f-情绪_触发事件" placeholder="情绪变化的诱因"></div>
+            </div>
+            <div class="form-section">
+              <h4>📋 活动与恢复</h4>
+              <div class="form-group"><label>今日活动</label><input type="text" id="f-活动_列表" placeholder="AI学习、上课、运动..."></div>
+              <div class="form-group"><label>恢复方式</label><input type="text" id="f-恢复_列表" placeholder="冥想、散步、泡脚..."></div>
+            </div>
+            <div class="form-section">
+              <h4>📝 总结</h4>
+              <div class="form-group"><label>今日亮点</label><input type="text" id="f-总结_今日亮点"></div>
+              <div class="form-group"><label>今日挑战</label><input type="text" id="f-总结_今日挑战"></div>
+              <div class="form-group"><label>一句话</label><input type="text" id="f-总结_一句话"></div>
+            </div>
+            <button type="submit" class="btn-primary" id="entry-submit">保存记录</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 趋势 -->
+    <section id="tab-trends" class="tab-content">
+      <div class="card">
+        <div class="card-header">七日趋势</div>
+        <div class="card-body">
+          <div class="chart-container"><canvas id="trend-main"></canvas></div>
+          <div class="chart-container"><canvas id="trend-energy"></canvas></div>
+          <div class="chart-container"><canvas id="trend-focus"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 分析 -->
+    <section id="tab-analysis" class="tab-content">
+      <div class="card">
+        <div class="card-header">分析报告</div>
+        <div class="card-body" id="analysis-content">
+          <p class="empty-state">暂无分析数据</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 生涯 -->
+    <section id="tab-career" class="tab-content">
+      <div class="card">
+        <div class="card-header">生涯规划看板</div>
+        <div class="card-body">
+          <div class="chart-container"><canvas id="career-pie"></canvas></div>
+          <div id="career-modules"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-tab="home">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>首页</span>
+    </button>
+    <button class="nav-item" data-tab="entry">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span>录入</span>
+    </button>
+    <button class="nav-item" data-tab="trends">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span>趋势</span>
+    </button>
+    <button class="nav-item" data-tab="analysis">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>分析</span>
+    </button>
+    <button class="nav-item" data-tab="career">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span>生涯</span>
+    </button>
+  </nav>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
