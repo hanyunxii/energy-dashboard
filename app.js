@@ -172,7 +172,7 @@ Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 Chart.defaults.color = "#6a8a94";
 Chart.defaults.borderColor = "rgba(47,164,160,.08)";
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
-Chart.defaults.plugins.legend.labels.pointStyle = "circle";`n
+Chart.defaults.plugins.legend.labels.pointStyle = "circle";
 // ====== 登录保护（云端模式） ======
 let loginMode = "login";
 let authReady = false;
