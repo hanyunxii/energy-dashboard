@@ -2,7 +2,7 @@
   "name": "能量管理看板",
   "short_name": "能量看板",
   "description": "个人身体、精力、情绪状态管理与能量追踪",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#6366f1",
